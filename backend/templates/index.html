@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Career Interest Form</title>
+</head>
+<body>
+  <h2>Career Interest Form</h2>
+  <form action="/submit-form" method="POST" enctype="multipart/form-data">
+    <label for="name">Name:</label>
+    <input type="text" name="name" id="name" required><br><br>
+
+    <label for="careerInterest">Career Interest:</label>
+    <input type="text" name="careerInterest" id="careerInterest" required><br><br>
+
+    <label for="expertise">Expertise Level:</label>
+    <select name="expertise" id="expertise">
+      <option value="beginner">Beginner</option>
+      <option value="intermediate">Intermediate</option>
+      <option value="expert">Expert</option>
+    </select><br><br>
+
+    <label for="file1">Upload PDF:</label>
+    <input type="file" name="file1" id="file1" accept=".pdf" required>
+    <label for="file2">Upload PDF:</label>
+    <input type="file" name="file2" id="file2" accept=".pdf" required><br><br>
+
+    <button type="submit">Submit</button>
+  </form>
+</body>
+</html>
