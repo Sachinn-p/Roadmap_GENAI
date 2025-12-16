@@ -135,12 +135,6 @@ npm install
 npm run dev
 ```
 
-**Or use the unified local script:**
-```bash
-chmod +x run-local.sh
-./run-local.sh
-```
-
 ## Usage
 - Upload curriculum and objective PDFs via the frontend.
 - The backend processes the files and generates a roadmap.
