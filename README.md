@@ -7,7 +7,6 @@ A full-stack application for generating and visualizing roadmaps from PDF curric
 **IMPORTANT**: This project uses API keys for Google Gemini and YouTube APIs. 
 - ✅ All credentials have been removed from source code
 - ✅ Use environment variables for all API keys
-- ✅ See [SECURITY.md](SECURITY.md) for detailed security information
 - ⚠️ Never commit `.env` files to version control
 
 ## Project Structure
