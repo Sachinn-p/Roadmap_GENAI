@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+import os
 
 # Helper function to convert ObjectId to string
 def convert_objectid_to_str(document):
@@ -8,7 +9,9 @@ def convert_objectid_to_str(document):
     return document
 
 def get_db():
-    return MongoClient('mongodb://localhost:27017/')['education']
+    # Use environment variable or default to mongodb container service name
+    mongodb_uri = os.getenv('MONGODB_URI', 'mongodb://mongodb:27017/')
+    return MongoClient(mongodb_uri)['education']
 
 class MongoDBClient:
     def __init__(self, connection_string: str, database_name: str, collection_name: str):

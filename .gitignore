@@ -12,7 +12,15 @@ Thumbs.db
 
 # Environment files
 .env
-.env.*
+.env.local
+.env.*.local
+*.env
+!.env.template
+
+# Backend environment files
+backend/.env
+backend/.env.*
+!backend/.env.template
 
 # Build output
 dist/

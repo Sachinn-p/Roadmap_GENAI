@@ -25,7 +25,8 @@ const Content = () => {
 
   const selectedTopic = localStorage.getItem("title");
   const name = localStorage.getItem("name");
-  const apiKey = "AIzaSyDgJ2xbAKJeQo5GUful3RO17Zv9q5tXZR4";
+  // API key should be fetched from backend, not hardcoded
+  const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY || '';
 
   useEffect(() => {
     const fetchContentData = async () => {

@@ -1,11 +1,15 @@
 import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 url = "https://youtube138.p.rapidapi.com/video/details/"
 
 querystring = {"q":"despacito","hl":"en","gl":"US"}
 
 headers = {
-	"x-rapidapi-key": "2b3144e1b5mshb2d29817954cba9p134811jsnb963da94911e",
+	"x-rapidapi-key": os.getenv('RAPIDAPI_KEY', ''),
 	"x-rapidapi-host": "youtube138.p.rapidapi.com"
 }
 

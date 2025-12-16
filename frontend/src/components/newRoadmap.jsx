@@ -57,10 +57,11 @@ export default function Roadmap() {
 
   const searchYouTubeVideos = async (query) => {
     try {
+      const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY || '';
       const response = await fetch(
         `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(
           query
-        )}&maxResults=1&type=video&key=AIzaSyDPxEwwyD6JFXOreDotikYS_e6WXHKfB6s`
+        )}&maxResults=1&type=video&key=${apiKey}`
       );
       const data = await response.json();
 

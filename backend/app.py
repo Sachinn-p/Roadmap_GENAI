@@ -1,6 +1,6 @@
 import os
 import time
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory, send_file
 import google.generativeai as genai
 from dotenv import load_dotenv
 from flask_cors import CORS
@@ -11,8 +11,24 @@ from pdfExtraction import read_pdf
 load_dotenv()
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', static_url_path='')
+
 CORS(app)
+
+# Serve React frontend
+@app.route('/')
+def serve_frontend():
+    return send_from_directory(app.static_folder, 'index.html')
+
+@app.route('/<path:path>')
+def serve_static_files(path):
+    # Check if file exists in static folder
+    if os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        # For client-side routing, return index.html
+        return send_from_directory(app.static_folder, 'index.html')
+
 
 def upload_to_gemini(path, mime_type=None):
     file = genai.upload_file(path, mime_type=mime_type)
@@ -77,7 +93,7 @@ def generate_roadmap_from_pdf(file_path):
                     Ensure that the keys 'roadMap', 'course_name', 'roadmap', 'topics', 'unit_number', and 'unit_title' are used exactly as shown. The content within the square brackets should be replaced with relevant information extracted from the PDF file.'''
 
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash-8b",
+        model_name="gemini-2.0-flash",
         generation_config=generation_config,
         system_instruction=Prompt_Template
     )
@@ -89,52 +105,75 @@ def generate_roadmap_from_pdf(file_path):
 
 @app.route('/submit-form', methods=['POST'])
 def submit_form():
-    name = request.form.get('name')
-    career_interest = request.form.get('careerInterest')
-    expertise = request.form.get('expertise')
-    file1 = request.files.get('file1')
-    file2 = request.files.get('file2')
+    try:
+        name = request.form.get('name')
+        career_interest = request.form.get('careerInterest')
+        expertise = request.form.get('expertise')
+        file1 = request.files.get('file1')
+        file2 = request.files.get('file2')
 
-    if not all([name, career_interest, expertise, file1, file2]):
-        return jsonify({"error": "All fields are required"}), 400
+        if not all([name, career_interest, expertise, file1, file2]):
+            return jsonify({"error": "All fields are required"}), 400
 
-    file2_path = os.path.join('uploads', file2.filename)
-    file1_path = os.path.join('uploads', file1.filename)
+        file2_path = os.path.join('uploads', file2.filename)
+        file1_path = os.path.join('uploads', file1.filename)
 
-    file2.save(file2_path)
-    file1.save(file1_path)
+        file2.save(file2_path)
+        file1.save(file1_path)
 
-    objective = read_pdf(file1_path)
-    curriculum = generate_roadmap_from_pdf(file2_path)
-
-    # Ensure curriculum is a valid dictionary
-    if isinstance(curriculum, str):
+        objective = read_pdf(file1_path)
+        
         try:
-            curriculum = json.loads(curriculum)
-        except json.JSONDecodeError:
-            return jsonify({"error": "Invalid JSON response from generate_roadmap_from_pdf"}), 500
+            curriculum = generate_roadmap_from_pdf(file2_path)
+        except Exception as api_error:
+            error_msg = str(api_error)
+            if "API key not valid" in error_msg:
+                return jsonify({
+                    "error": "Invalid Google Gemini API key. Please check your .env file and ensure you have a valid GEMINI_API_KEY.",
+                    "details": "The API key in your .env file appears to be invalid or is still set to the placeholder value."
+                }), 500
+            else:
+                return jsonify({
+                    "error": f"Error generating roadmap: {error_msg}",
+                    "details": "There was an issue with the Gemini API call."
+                }), 500
 
-    if not isinstance(curriculum, dict):
-        return jsonify({"error": "curriculum is not a valid dictionary"}), 400
+        # Ensure curriculum is a valid dictionary
+        if isinstance(curriculum, str):
+            try:
+                curriculum = json.loads(curriculum)
+            except json.JSONDecodeError:
+                return jsonify({"error": "Invalid JSON response from generate_roadmap_from_pdf"}), 500
 
-    # Validate 'roadMap' structure
-    if "roadMap" in curriculum and isinstance(curriculum["roadMap"], dict):
-        course_name = curriculum["roadMap"].get("course_name", "N/A")
-    else:
-        return jsonify({"error": "Invalid structure for curriculum['roadMap']"}), 400
+        if not isinstance(curriculum, dict):
+            return jsonify({"error": "curriculum is not a valid dictionary"}), 400
 
-    # Save to MongoDB
-    obj = MongoDBClient("mongodb://localhost:27017/", "education", "content")
-    document = {
-        "name": name,
-        "career_interest": career_interest,
-        "expertise": expertise,
-        "objective": objective,
-        "curriculum": curriculum
-    }
-    obj.create_documents([document])
+        # Validate 'roadMap' structure
+        if "roadMap" in curriculum and isinstance(curriculum["roadMap"], dict):
+            course_name = curriculum["roadMap"].get("course_name", "N/A")
+        else:
+            return jsonify({"error": "Invalid structure for curriculum['roadMap']"}), 400
 
-    return jsonify({"message": "Roadmap generated successfully", "course_name": course_name}), 200
+        # Save to MongoDB
+        mongodb_uri = os.getenv('MONGODB_URI', 'mongodb://mongodb:27017/')
+        obj = MongoDBClient(mongodb_uri, "education", "content")
+        document = {
+            "name": name,
+            "career_interest": career_interest,
+            "expertise": expertise,
+            "objective": objective,
+            "curriculum": curriculum
+        }
+        obj.create_documents([document])
+
+        return jsonify({"message": "Roadmap generated successfully", "course_name": course_name}), 200
+
+    except Exception as e:
+        print(f"Unexpected error in submit_form: {str(e)}")
+        return jsonify({
+            "error": "An unexpected error occurred while processing your request.",
+            "details": str(e)
+        }), 500
 
 
 # Global variable to store the course name
@@ -202,8 +241,8 @@ def get_obj():
 @app.route('/api/video', methods=['GET'])
 def get_video():
     import requests
-    YOUTUBE_API_KEY = 'AIzaSyDPxEwwyD6JFXOreDotikYS_e6WXHKfB6s'
-    YOUTUBE_SEARCH_URL = 'https://www.googleapis.com/youtube/v3/search'
+    YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+    YOUTUBE_SEARCH_URL = os.getenv("YOUTUBE_SEARCH_URL")
     topic = request.args.get('topic')
     if not topic:
         return jsonify({'error': 'Topic parameter is required'}), 400
@@ -365,4 +404,4 @@ def translate_text():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
