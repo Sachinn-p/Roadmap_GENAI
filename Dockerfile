@@ -45,7 +45,7 @@ COPY nginx.conf /etc/nginx/nginx.conf
 
 # Copy backend .env file (for local dev only; for production, use --env-file or secrets manager)
 # Remove/comment this line for production builds!
-COPY backend/.env .env
+# COPY backend/.env .env
 
 # Set environment variables (can be overridden at runtime)
 ENV FLASK_APP=app.py
