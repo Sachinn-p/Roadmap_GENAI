@@ -21,7 +21,7 @@ Thumbs.db
 backend/.env
 backend/.env.*
 !backend/.env.template
-
+frontend/.env.production
 # Build output
 dist/
 build/

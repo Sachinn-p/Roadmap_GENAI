@@ -1,4 +1,9 @@
 # Function to generate AI-based content for syllabus topics
+import google.generativeai as genai
+import os
+from dotenv import load_dotenv
+load_dotenv()
+genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 def generate_syllabus_content(objectives, syllabus):
     prompt = f"""
     You are an AI educator. Your task is to generate educational content for a syllabus based on the provided learning objectives.

@@ -15,7 +15,7 @@ const VideoSidebar = ({ video, onClose }) => {
 
   return (
     <div className="fixed right-0 top-0 w-[400px] h-screen bg-white shadow-lg p-4 overflow-y-auto">
-      <button 
+      <button
         onClick={onClose}
         className="absolute top-2 right-2 p-2 hover:bg-gray-100 rounded-full"
       >
@@ -52,16 +52,16 @@ export default function Roadmap() {
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
+    [setEdges],
   );
 
   const searchYouTubeVideos = async (query) => {
     try {
-      const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY || '';
+      const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY || "";
       const response = await fetch(
         `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(
-          query
-        )}&maxResults=1&type=video&key=${apiKey}`
+          query,
+        )}&maxResults=1&type=video&key=${apiKey}`,
       );
       const data = await response.json();
 
@@ -82,7 +82,7 @@ export default function Roadmap() {
 
   const onNodeClick = useCallback(async (event, node) => {
     // Don't search for videos when clicking the course or unit nodes
-    if (node.id === 'course' || node.id.startsWith('unit-')) {
+    if (node.id === "course" || node.id.startsWith("unit-")) {
       setSelectedVideo(null);
       return;
     }
@@ -103,13 +103,15 @@ export default function Roadmap() {
 
       try {
         const response = await fetch(
-          `http://localhost:5000/api/roadmap?name=${encodeURIComponent(name)}`
+          `/api/roadmap?name=${encodeURIComponent(name)}`,
         );
         const data = await response.json();
 
         if (response.ok) {
           setCourseData(data.roadmap);
-          const { nodes: newNodes, edges: newEdges } = generateNodesAndEdges(data.roadmap);
+          const { nodes: newNodes, edges: newEdges } = generateNodesAndEdges(
+            data.roadmap,
+          );
           setNodes(newNodes);
           setEdges(newEdges);
         } else {
@@ -143,7 +145,13 @@ export default function Roadmap() {
 
   return (
     <div className="flex">
-      <div style={{ width: selectedVideo ? "calc(100vw - 400px)" : "100vw", height: "100vh", border: "1px black solid" }}>
+      <div
+        style={{
+          width: selectedVideo ? "calc(100vw - 400px)" : "100vw",
+          height: "100vh",
+          border: "1px black solid",
+        }}
+      >
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -161,9 +169,9 @@ export default function Roadmap() {
           <Background variant="dots" gap={12} size={1} />
         </ReactFlow>
       </div>
-      <VideoSidebar 
-        video={selectedVideo} 
-        onClose={() => setSelectedVideo(null)} 
+      <VideoSidebar
+        video={selectedVideo}
+        onClose={() => setSelectedVideo(null)}
       />
     </div>
   );

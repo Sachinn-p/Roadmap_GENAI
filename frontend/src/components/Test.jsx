@@ -4,7 +4,7 @@ function Test() {
   const [roadmap, setRoadmap] = useState(null);
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/roadmap")
+    fetch("/api/roadmap")
       .then((res) => res.json())
       .then((data) => setRoadmap(data))
       .catch((err) => console.error("Error fetching roadmap:", err));

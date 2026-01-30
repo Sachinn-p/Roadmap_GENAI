@@ -29,7 +29,8 @@ function UploadForm() {
     formData.append("file2", file2);
 
     try {
-      const response = await fetch("http://localhost:5000/submit-form", {
+      const apiUrl = import.meta.env.VITE_API_URL || "";
+      const response = await fetch(`/api/submit-form`, {
         method: "POST",
         body: formData,
       });

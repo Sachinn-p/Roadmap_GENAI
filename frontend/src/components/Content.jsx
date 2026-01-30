@@ -26,7 +26,7 @@ const Content = () => {
   const selectedTopic = localStorage.getItem("title");
   const name = localStorage.getItem("name");
   // API key should be fetched from backend, not hardcoded
-  const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY || '';
+  const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY || "";
 
   useEffect(() => {
     const fetchContentData = async () => {
@@ -39,7 +39,7 @@ const Content = () => {
       setError(null);
 
       try {
-        const objResponse = await axios.get(`http://localhost:5000/getObj`, {
+        const objResponse = await axios.get(`/api/getObj`, {
           params: { name },
         });
 
@@ -47,13 +47,10 @@ const Content = () => {
         localStorage.setItem("objective", fetchedObjective);
         setObjective(fetchedObjective);
 
-        const contentResponse = await axios.post(
-          "http://localhost:5000/generate-content",
-          {
-            selectedTopic,
-            objective: fetchedObjective,
-          }
-        );
+        const contentResponse = await axios.post("/api/generate-content", {
+          selectedTopic,
+          objective: fetchedObjective,
+        });
 
         setContent(contentResponse.data.content);
 
@@ -75,40 +72,42 @@ const Content = () => {
     try {
       const searchResponse = await fetch(
         `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(
-          topic
-        )}&type=video&maxResults=1&key=${apiKey}`
+          topic,
+        )}&type=video&maxResults=1&key=${apiKey}`,
       );
-  
+
       if (!searchResponse.ok) {
         throw new Error(`HTTP error! status: ${searchResponse.status}`);
       }
-  
+
       const searchData = await searchResponse.json();
-  
+
       if (searchData.items.length === 0) {
         console.log("No video found");
         setVideo(null);
         return;
       }
-  
+
       const videoId = searchData.items[0].id.videoId;
-  
+
       const videoResponse = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoId}&key=${apiKey}`
+        `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoId}&key=${apiKey}`,
       );
-  
+
       if (!videoResponse.ok) {
         throw new Error(`HTTP error! status: ${videoResponse.status}`);
       }
-  
+
       const videoData = await videoResponse.json();
-  
+
       if (videoData.items.length > 0) {
         setVideo(videoData.items[0]);
       }
     } catch (error) {
       console.error("Error fetching video:", error);
-      setError("Failed to fetch YouTube video. Please check your API key and quota.");
+      setError(
+        "Failed to fetch YouTube video. Please check your API key and quota.",
+      );
     }
   };
 
@@ -145,7 +144,7 @@ const Content = () => {
   // Handle Translate button click
   const handleTranslateClick = async (language) => {
     try {
-      const response = await axios.post("http://127.0.0.1:5000/translate", {
+      const response = await axios.post("/api/translate", {
         text: selectedText,
         language: language,
       });
@@ -188,7 +187,7 @@ const Content = () => {
     const userQuery = botInput;
 
     try {
-      const response = await axios.post("http://127.0.0.1:5000/explain", {
+      const response = await axios.post("/api/explain", {
         text: botInput,
       });
       const aiResponse = response.data.explanation || "No response available.";
@@ -273,16 +272,28 @@ const Content = () => {
                 left: `${buttonPosition.left + 80}px`, // Position next to Ask Bot button
               }}
             >
-              <button onClick={() => setShowLanguageOptions(!showLanguageOptions)}>
+              <button
+                onClick={() => setShowLanguageOptions(!showLanguageOptions)}
+              >
                 Translate
               </button>
               {showLanguageOptions && (
                 <div className="language-options">
-                  <button onClick={() => handleTranslateClick("Tamil")}>Tamil</button>
-                  <button onClick={() => handleTranslateClick("Hindi")}>Hindi</button>
-                  <button onClick={() => handleTranslateClick("Kannada")}>Kannada</button>
-                  <button onClick={() => handleTranslateClick("Telugu")}>Telugu</button>
-                  <button onClick={() => handleTranslateClick("Malayalam")}>Malayalam</button>
+                  <button onClick={() => handleTranslateClick("Tamil")}>
+                    Tamil
+                  </button>
+                  <button onClick={() => handleTranslateClick("Hindi")}>
+                    Hindi
+                  </button>
+                  <button onClick={() => handleTranslateClick("Kannada")}>
+                    Kannada
+                  </button>
+                  <button onClick={() => handleTranslateClick("Telugu")}>
+                    Telugu
+                  </button>
+                  <button onClick={() => handleTranslateClick("Malayalam")}>
+                    Malayalam
+                  </button>
                 </div>
               )}
             </div>

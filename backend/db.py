@@ -1,6 +1,8 @@
+
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import os
+from urllib.parse import quote_plus
 
 # Helper function to convert ObjectId to string
 def convert_objectid_to_str(document):
@@ -8,15 +10,44 @@ def convert_objectid_to_str(document):
         document["_id"] = str(document["_id"])
     return document
 
+
+
+# Helper to build a safe MongoDB Atlas URI
+def get_mongo_uri():
+    uri = os.getenv('MONGODB_URI')
+    if uri:
+        return uri
+    # If not, build from components
+    user = os.getenv('MONGODB_USER')
+    pwd = os.getenv('MONGODB_PASS')
+    cluster = os.getenv('MONGODB_CLUSTER')
+    params = os.getenv('MONGODB_PARAMS', 'retryWrites=true&w=majority')
+    if user and pwd and cluster:
+        user_enc = quote_plus(user)
+        pwd_enc = quote_plus(pwd)
+        return f"mongodb+srv://{user_enc}:{pwd_enc}@{cluster}/?{params}"
+    # fallback to localhost
+    return 'mongodb://mongodb:27017/'
+
 def get_db():
-    # Use environment variable or default to mongodb container service name
-    mongodb_uri = os.getenv('MONGODB_URI', 'mongodb://mongodb:27017/')
-    return MongoClient(mongodb_uri)['education']
+    mongodb_uri = get_mongo_uri()
+    client = MongoClient(mongodb_uri)
+    db_name = os.getenv('MONGODB_DB', 'education')
+    db = client[db_name]
+    collection_name = os.getenv('MONGODB_COLLECTION', 'roadmaps')
+    if collection_name not in db.list_collection_names():
+        db.create_collection(collection_name)
+    return db
+
+
 
 class MongoDBClient:
     def __init__(self, connection_string: str, database_name: str, collection_name: str):
-        self.client = MongoClient(connection_string)
+        # Use get_mongo_uri to ensure safe URI
+        self.client = MongoClient(get_mongo_uri())
         self.database = self.client[database_name]
+        if collection_name not in self.database.list_collection_names():
+            self.database.create_collection(collection_name)
         self.collection = self.database[collection_name]
 
     def create_document(self, document: dict) -> dict:

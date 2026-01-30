@@ -35,7 +35,7 @@ export default function Roadmap() {
 
     // Calculate the maximum number of topics in any unit
     const maxTopics = Math.max(
-      ...courseData.roadmap.map((unit) => unit.topics.length)
+      ...courseData.roadmap.map((unit) => unit.topics.length),
     );
     const maxRows = Math.ceil(maxTopics / topicsPerRow);
 
@@ -121,7 +121,7 @@ export default function Roadmap() {
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
+    [setEdges],
   );
 
   const navigate = useNavigate();
@@ -144,14 +144,14 @@ export default function Roadmap() {
 
       try {
         const response = await fetch(
-          `http://localhost:5000/api/roadmap?name=${encodeURIComponent(name)}`
+          `/api/roadmap?name=${encodeURIComponent(name)}`,
         );
         const data = await response.json();
 
         if (response.ok) {
           setCourseData(data.roadmap);
           const { nodes: newNodes, edges: newEdges } = generateNodesAndEdges(
-            data.roadmap
+            data.roadmap,
           );
           setNodes(newNodes);
           setEdges(newEdges);

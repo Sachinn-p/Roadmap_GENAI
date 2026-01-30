@@ -3,6 +3,7 @@ import time
 from flask import Flask, request, jsonify, send_from_directory, send_file
 import google.generativeai as genai
 from dotenv import load_dotenv
+
 from flask_cors import CORS
 import json
 from db import MongoDBClient, get_db
@@ -11,9 +12,19 @@ from pdfExtraction import read_pdf
 load_dotenv()
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
+
+# Ensure uploads directory exists
+os.makedirs('uploads', exist_ok=True)
+
 app = Flask(__name__, static_folder='static', static_url_path='')
 
-CORS(app)
+# Allow CORS for local dev and Render deploy
+CORS(app, origins=[
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:5000",
+    "https://roadmap-base-latest.onrender.com"
+])
 
 # Serve React frontend
 @app.route('/')
@@ -93,7 +104,7 @@ def generate_roadmap_from_pdf(file_path):
                     Ensure that the keys 'roadMap', 'course_name', 'roadmap', 'topics', 'unit_number', and 'unit_title' are used exactly as shown. The content within the square brackets should be replaced with relevant information extracted from the PDF file.'''
 
     model = genai.GenerativeModel(
-        model_name="gemini-2.0-flash",
+        model_name="gemini-2.5-flash",
         generation_config=generation_config,
         system_instruction=Prompt_Template
     )
@@ -103,30 +114,36 @@ def generate_roadmap_from_pdf(file_path):
 
     return response.text
 
-@app.route('/submit-form', methods=['POST'])
+@app.route('/api/submit-form', methods=['POST'])
 def submit_form():
     try:
+        print("[DEBUG] submit_form called", flush=True)
         name = request.form.get('name')
         career_interest = request.form.get('careerInterest')
         expertise = request.form.get('expertise')
         file1 = request.files.get('file1')
         file2 = request.files.get('file2')
+        print(f"[DEBUG] Received: name={name}, career_interest={career_interest}, expertise={expertise}, file1={file1.filename if file1 else None}, file2={file2.filename if file2 else None}", flush=True)
 
         if not all([name, career_interest, expertise, file1, file2]):
+            print("[ERROR] Missing required fields", flush=True)
             return jsonify({"error": "All fields are required"}), 400
 
         file2_path = os.path.join('uploads', file2.filename)
         file1_path = os.path.join('uploads', file1.filename)
+        print(f"[DEBUG] Saving files to: {file1_path}, {file2_path}", flush=True)
 
         file2.save(file2_path)
         file1.save(file1_path)
 
+        print("[DEBUG] Reading objective PDF", flush=True)
         objective = read_pdf(file1_path)
-        
+        print("[DEBUG] Generating roadmap from curriculum PDF", flush=True)
         try:
             curriculum = generate_roadmap_from_pdf(file2_path)
         except Exception as api_error:
             error_msg = str(api_error)
+            print(f"[ERROR] Gemini API error: {error_msg}", flush=True)
             if "API key not valid" in error_msg:
                 return jsonify({
                     "error": "Invalid Google Gemini API key. Please check your .env file and ensure you have a valid GEMINI_API_KEY.",
@@ -138,24 +155,29 @@ def submit_form():
                     "details": "There was an issue with the Gemini API call."
                 }), 500
 
+        print(f"[DEBUG] Raw curriculum: {curriculum}", flush=True)
         # Ensure curriculum is a valid dictionary
         if isinstance(curriculum, str):
             try:
                 curriculum = json.loads(curriculum)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as jde:
+                print(f"[ERROR] JSON decode error: {jde}", flush=True)
                 return jsonify({"error": "Invalid JSON response from generate_roadmap_from_pdf"}), 500
 
         if not isinstance(curriculum, dict):
+            print("[ERROR] curriculum is not a valid dictionary", flush=True)
             return jsonify({"error": "curriculum is not a valid dictionary"}), 400
 
         # Validate 'roadMap' structure
         if "roadMap" in curriculum and isinstance(curriculum["roadMap"], dict):
             course_name = curriculum["roadMap"].get("course_name", "N/A")
         else:
+            print("[ERROR] Invalid structure for curriculum['roadMap']", flush=True)
             return jsonify({"error": "Invalid structure for curriculum['roadMap']"}), 400
 
         # Save to MongoDB
         mongodb_uri = os.getenv('MONGODB_URI', 'mongodb://mongodb:27017/')
+        print(f"[DEBUG] Connecting to MongoDB at {mongodb_uri}", flush=True)
         obj = MongoDBClient(mongodb_uri, "education", "content")
         document = {
             "name": name,
@@ -164,12 +186,18 @@ def submit_form():
             "objective": objective,
             "curriculum": curriculum
         }
+        print(f"[DEBUG] Inserting document into MongoDB: {document}", flush=True)
         obj.create_documents([document])
 
+        print("[DEBUG] Roadmap generated and saved successfully", flush=True)
         return jsonify({"message": "Roadmap generated successfully", "course_name": course_name}), 200
 
     except Exception as e:
-        print(f"Unexpected error in submit_form: {str(e)}")
+        import sys
+        print(f"[ERROR] Unexpected error in submit_form: {str(e)}", flush=True)
+        import traceback
+        traceback.print_exc(file=sys.stdout)
+        sys.stdout.flush()
         return jsonify({
             "error": "An unexpected error occurred while processing your request.",
             "details": str(e)
@@ -213,7 +241,7 @@ def get_roadmap():
     # Return the roadmap data to the frontend
     return jsonify({"course_name": course_name, "roadmap": roadmap_data})
 
-@app.route('/getObj', methods=['GET'])
+@app.route('/api/getObj', methods=['GET'])
 def get_obj():
     course_name = request.args.get("name")
     
@@ -310,7 +338,7 @@ no image description or image link in the output.
   """
     
     # Initialize the model (using gemini-pro as it's the current stable version)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-2.5-flash")
     
     try:
         # Generate the content
@@ -320,7 +348,7 @@ no image description or image link in the output.
         print(f"Error generating content: {str(e)}")
         return f"Error generating content: {str(e)}"
 
-@app.route('/generate-content', methods=['POST'])
+@app.route('/api/generate-content', methods=['POST'])
 def generate_content():
     data = request.get_json() 
     objectives = data.get('objective', '')
@@ -331,7 +359,7 @@ def generate_content():
     response = generate_syllabus_content(objectives, title)
     return jsonify({'content': response})
 
-@app.route('/explain', methods=['POST', 'OPTIONS'])
+@app.route('/api/explain', methods=['POST', 'OPTIONS'])
 def explain_text():
     if request.method == 'OPTIONS':
         # Handle preflight requests
@@ -350,7 +378,7 @@ def explain_text():
 
         # Call the Gemini API to generate an explanation
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-2.5-flash')
             response = model.generate_content(f"Explain this: {copied_text}")
             print(f"Generated explanation: {response.text}")
 
@@ -365,7 +393,7 @@ def explain_text():
         print(f"General Error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/translate', methods=['POST'])
+@app.route('/api/translate', methods=['POST'])
 def translate_text():
     try:
         # Extract the text and target language from the request
