@@ -68,7 +68,7 @@ roadmap/
 - **Framework:** React (Vite)
 - **Main entry:** `frontend/src/App.jsx`
 - **Functionality:**
-  - User interface for uploading PDFs
+  - User interface for uploading PDFs.
   - Visualizes generated roadmaps
 
 ## 🚀 Quick Start
